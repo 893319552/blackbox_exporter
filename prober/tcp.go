@@ -181,7 +181,7 @@ func ProbeTCP(ctx context.Context, target string, module config.Module, registry
 		}
 		if send != "" {
 			logger.Debug("Sending line", "line", send)
-			if _, err := fmt.Fprintf(conn, "%s\n", send); err != nil {
+			if _, err := fmt.Fprintf(conn, "%s", send); err != nil {
 				logger.Error("Failed to send", "err", err)
 				return false
 			}
