@@ -179,9 +179,19 @@ func ProbeTCP(ctx context.Context, target string, module config.Module, registry
 				probeExpectInfo(registry, &qr, scanner.Bytes(), match)
 			}
 		}
-		if send != "" {
+		if qr.SendHex != "" {
+            sendBytes, err := hex.DecodeString(qr.SendHex)
+            if err != nil {
+                logger.Error("Failed to decode hex string", "err", err)
+                return false
+            }
+            if _, err := conn.Write(sendBytes); err != nil {
+                logger.Error("Failed to send", "err", err)
+                return false
+            }
+        } else if send != "" {
 			logger.Debug("Sending line", "line", send)
-			if _, err := fmt.Fprintf(conn, "%s", send); err != nil {
+			if _, err := fmt.Fprintf(conn, "%s\n", send); err != nil {
 				logger.Error("Failed to send", "err", err)
 				return false
 			}

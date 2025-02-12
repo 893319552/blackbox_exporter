@@ -247,6 +247,7 @@ type QueryResponse struct {
 	Expect   Regexp  `yaml:"expect,omitempty"`
 	Labels   []Label `yaml:"labels,omitempty"`
 	Send     string  `yaml:"send,omitempty"`
+	SendHex  string  `yaml:"send_hex,omitempty"`
 	StartTLS bool    `yaml:"starttls,omitempty"`
 }
 
