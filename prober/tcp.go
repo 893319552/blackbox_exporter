@@ -229,6 +229,11 @@ func ProbeTCP(ctx context.Context, target string, module config.Module, registry
 			probeSSLLastChainExpiryTimestampSeconds.Set(float64(getLastChainExpiry(&state).Unix()))
 			probeSSLLastInformation.WithLabelValues(getFingerprint(&state), getSubject(&state), getIssuer(&state), getDNSNames(&state), getSerialNumber(&state)).Set(1)
 		}
+		if scanner.Text() != "" {
+                    logger.Info("Server responded with non-empty content, closing connection")
+                    conn.Close()
+                    return true
+            }
 	}
 	return true
 }
