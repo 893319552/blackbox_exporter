@@ -162,7 +162,8 @@ func ProbeTCP(ctx context.Context, target string, module config.Module, registry
 				match = qr.Expect.Regexp.FindSubmatchIndex(scanner.Bytes())
 				if match != nil {
 					logger.Info("Regexp matched", "regexp", qr.Expect.Regexp, "line", scanner.Text())
-					break
+					conn.Close()
+                                        return true
 				}
 			}
 			if scanner.Err() != nil {
