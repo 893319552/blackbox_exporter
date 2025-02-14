@@ -162,7 +162,8 @@ func ProbeTCP(ctx context.Context, target string, module config.Module, registry
 				match = qr.Expect.Regexp.FindSubmatchIndex(scanner.Bytes())
 				if match != nil {
 					logger.Info("Regexp matched", "regexp", qr.Expect.Regexp, "line", scanner.Text())
-					break
+					conn.Close()
+					return true
 				}
 			}
 			if scanner.Err() != nil {
@@ -228,11 +229,6 @@ func ProbeTCP(ctx context.Context, target string, module config.Module, registry
 			probeTLSVersion.WithLabelValues(getTLSVersion(&state)).Set(1)
 			probeSSLLastChainExpiryTimestampSeconds.Set(float64(getLastChainExpiry(&state).Unix()))
 			probeSSLLastInformation.WithLabelValues(getFingerprint(&state), getSubject(&state), getIssuer(&state), getDNSNames(&state), getSerialNumber(&state)).Set(1)
-		}
-		if scanner.Text() != "" {
-                    logger.Info("Server responded with non-empty content, closing connection")
-                    conn.Close()
-                    return true
                 }
 	}
 	return true
