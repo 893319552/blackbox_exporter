@@ -106,7 +106,17 @@ func ProbeUDP(ctx context.Context, target string, module config.Module, registry
 			probeFailedDueToRegex.Set(0)
 			send = string(re.Expand(nil, []byte(send), scanner.Bytes(), match))
 		}
-		if send != "" {
+		if qr.SendHex != "" {
+			sendBytes, err := hex.DecodeString(qr.SendHex)
+			if err != nil {
+				level.Error(logger).Log("msg", "Failed to decode hex string", "err", err)
+				return false
+			}
+			if _, err := conn.Write(sendBytes); err != nil {
+				level.Error(logger).Log("msg", "Failed to send", "err", err)
+				return false
+			}
+		} else if send != "" {
 			level.Debug(logger).Log("msg", "Sending line", "line", send)
 			if _, err := fmt.Fprintf(conn, "%s\n", send); err != nil {
 				level.Error(logger).Log("msg", "Failed to send", "err", err)
