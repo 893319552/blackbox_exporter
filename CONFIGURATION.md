@@ -283,7 +283,33 @@ validate_additional_rrs:
     [ - <regex>, ... ]
 
 ```
+### `<udp_probe>`
 
+```yaml
+# The IP protocol of the UDP probe (ip4, ip6).
+[ preferred_ip_protocol: <string> | default = "ip6" ]
+[ ip_protocol_fallback: <boolean | default = true> ]
+
+# The source IP address.
+[ source_ip_address: <string> ]
+
+# The query sent in the UDP probe and the expected associated response.
+query_response:
+  [ - [ [ expect: <string> ],
+        [ labels:
+          - [ name: <string>
+              value: <string>
+            ], ...
+        ],
+        [ send: <string> ]
+      ], ...
+  ]
+
+# Configuration for TLS protocol of UDP probe.
+tls_config:
+  [ <tls_config> ]
+
+```
 ### `<icmp_probe>`
 
 ```yml
