@@ -17,6 +17,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"encoding/hex"
 	"net"
 	"regexp"
 
