@@ -19,6 +19,9 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: '1.21'  # 选择合适的 Go 版本
+              
+      - name: Clear existing cache
+      run: rm -rf ~/.cache/go-build ~/go/pkg/mod
 
       - name: 编译 Blackbox Exporter
         run: |
