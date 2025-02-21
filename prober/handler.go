@@ -37,6 +37,7 @@ var (
 	Probers = map[string]ProbeFn{
 		"http": ProbeHTTP,
 		"tcp":  ProbeTCP,
+		"udo":  ProberUDP,
 		"icmp": ProbeICMP,
 		"dns":  ProbeDNS,
 		"grpc": ProbeGRPC,
