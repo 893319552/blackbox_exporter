@@ -61,7 +61,7 @@ func ProbeUDP(ctx context.Context, target string, module config.Module, registry
 
 	conn, err := dialUDP(ctx, target, module, registry, logger)
 	if err != nil {
-		logger.Error("Error dialing TCP", "err", err)
+		logger.Error("Error dialing UDP", "err", err)
 		return false
 	}
 	defer conn.Close()
