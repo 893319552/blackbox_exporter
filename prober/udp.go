@@ -90,7 +90,7 @@ func ProbeUDP(ctx context.Context, target string, module config.Module, registry
 				logger.Debug("Read line", "line", scanner.Text())
 				match = re.FindSubmatchIndex(scanner.Bytes())
 				if match != nil {
-					logger.Info("Regexp matched", re, scanner.Text())
+					logger.Info("Regexp matched", slog.String("regexp", re.String()), "line", scanner.Text())
 					break
 				}
 			}
