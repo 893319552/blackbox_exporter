@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"encoding/hex"
 	"net"
-	"log/slog"
+	"log"
 	"regexp"
 
 	"github.com/prometheus/blackbox_exporter/config"
