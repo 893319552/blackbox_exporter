@@ -1,56 +1,3 @@
-// Copyright 2016 The Prometheus Authors
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-// http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
-package prober
-
-import (
-	"bufio"
-	"context"
-	"fmt"
-	"encoding/hex"
-	"net"
-	"log/slog"
-	"regexp"
-
-	"github.com/prometheus/blackbox_exporter/config"
-	"github.com/prometheus/client_golang/prometheus"
-)
-
-func dialUDP(ctx context.Context, target string, module config.Module, registry *prometheus.Registry, logger *slog.Logger) (net.Conn, error) {
-	var dialProtocol, dialTarget string
-	dialer := &net.Dialer{}
-	targetAddress, port, err := net.SplitHostPort(target)
-	if err != nil {
-		logger.Error("Error splitting target address and port", "err", err)
-		return nil, err
-	}
-
-	ip, _, err := chooseProtocol(ctx, module.UDP.IPProtocol, false, targetAddress, registry, logger)
-	if err != nil {
-		logger.Error("Error resolving address", "err", err)
-		return nil, err
-	}
-
-	if ip.IP.To4() == nil {
-		dialProtocol = "udp6"
-	} else {
-		dialProtocol = "udp4"
-	}
-	dialTarget = net.JoinHostPort(ip.String(), port)
-        logger.Info("Dialing UDP", "protocol", dialProtocol, "target", dialTarget)
-	return dialer.DialContext(ctx, dialProtocol, dialTarget)
-}
-
 func ProbeUDP(ctx context.Context, target string, module config.Module, registry *prometheus.Registry, logger *slog.Logger) bool {
 	probeFailedDueToRegex := prometheus.NewGauge(prometheus.GaugeOpts{
 		Name: "probe_failed_due_to_regex",
@@ -59,22 +6,26 @@ func ProbeUDP(ctx context.Context, target string, module config.Module, registry
 	registry.MustRegister(probeFailedDueToRegex)
 	deadline, _ := ctx.Deadline()
 
-	conn, err := dialUDP(ctx, target, module, registry, logger)
+	packetConn, err := net.ListenPacket("udp", ":0")
 	if err != nil {
-		logger.Error("Error dialing UDP", "err", err)
+		logger.Error("Error creating UDP packet connection", "err", err)
 		return false
 	}
-	defer conn.Close()
-	logger.Info("Successfully dialed")
-	// Set a deadline to prevent the following code from blocking forever.
-	// If a deadline cannot be set, better fail the probe by returning an error
-	// now rather than blocking forever.
-	if err := conn.SetDeadline(deadline); err != nil {
+	defer packetConn.Close()
+	logger.Info("Successfully created UDP packet connection")
+	// 设置一个截止时间以防止代码永远阻塞
+	if err := packetConn.SetDeadline(deadline); err != nil {
 		logger.Error("Error setting deadline", "err", err)
 		return false
 	}
 
-	scanner := bufio.NewScanner(conn)
+	targetAddr, err := net.ResolveUDPAddr("udp", target)
+	if err != nil {
+		logger.Error("Error resolving target address", "err", err)
+		return false
+	}
+
+	buf := make([]byte, 1024)
 	for i, qr := range module.UDP.QueryResponse {
 		logger.Info("Processing query response entry", "entry_number", i)
 		send := qr.Send
@@ -85,40 +36,40 @@ func ProbeUDP(ctx context.Context, target string, module config.Module, registry
 				return false
 			}
 			var match []int
-			// Read lines until one of them matches the configured regexp.
-			for scanner.Scan() {
-				logger.Debug("Read line", "line", scanner.Text())
-				match = re.FindSubmatchIndex(scanner.Bytes())
+			// 读取数据直到匹配配置的正则表达式
+			for {
+				n, _, err := packetConn.ReadFrom(buf)
+				if err != nil {
+					logger.Error("Error reading from connection", "err", err)
+					return false
+				}
+				logger.Debug("Read bytes", "bytes", buf[:n])
+				match = re.FindSubmatchIndex(buf[:n])
 				if match != nil {
-					logger.Info("Regexp matched", "regexp", re.String(), "line", scanner.Text())
+					logger.Info("Regexp matched", "regexp", re.String(), "data", string(buf[:n]))
 					break
 				}
 			}
-			if scanner.Err() != nil {
-				logger.Error("Error reading from connection", "err", scanner.Err().Error())
-				return false
-			}
 			if match == nil {
 				probeFailedDueToRegex.Set(1)
-				logger.Error("Regexp did not match", "regexp", qr.Expect.Regexp, "line", scanner.Text())
+				logger.Error("Regexp did not match", "regexp", qr.Expect.Regexp)
 				return false
 			}
 			probeFailedDueToRegex.Set(0)
-			send = string(re.Expand(nil, []byte(send), scanner.Bytes(), match))
+			send = string(re.Expand(nil, []byte(send), buf, match))
 		}
+		sendBytes := []byte(send)
 		if qr.SendHex != "" {
-			sendBytes, err := hex.DecodeString(qr.SendHex)
+			var err error
+			sendBytes, err = hex.DecodeString(qr.SendHex)
 			if err != nil {
 				logger.Error("Failed to decode hex string", "err", err)
 				return false
 			}
-			if _, err := conn.Write(sendBytes); err != nil {
-				logger.Error("Failed to send", "err", err)
-				return false
-			}
-		} else if send != "" {
-			logger.Debug("Sending line", "line", send)
-			if _, err := fmt.Fprintf(conn, "%s\n", send); err != nil {
+		}
+		if len(sendBytes) > 0 {
+			logger.Debug("Sending bytes", "bytes", sendBytes)
+			if _, err := packetConn.WriteTo(sendBytes, targetAddr); err != nil {
 				logger.Error("Failed to send", "err", err)
 				return false
 			}
