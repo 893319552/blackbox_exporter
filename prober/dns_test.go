@@ -45,9 +45,6 @@ func isIPv6Supported() bool {
     return false
 }
 
-    // existing test code
-}
-
 }
 
 func startDNSServer(protocol string, handler func(dns.ResponseWriter, *dns.Msg)) (*dns.Server, net.Addr) {
