@@ -36,7 +36,7 @@ func dialUDP(ctx context.Context, target string, module config.Module, registry 
 		return nil, err
 	}
 
-	ip, err := chooseProtocol(module.UDP.IPProtocol, targetAddress, registry, logger)
+	ip, err := chooseProtocol(ctx, module.UDP.IPProtocol, false, targetAddress, registry, logger)
 	if err != nil {
 		level.Error(logger).Log("msg", "Error resolving address", "err", err)
 		return nil, err
