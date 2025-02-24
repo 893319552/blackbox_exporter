@@ -12,6 +12,7 @@
 // limitations under the License.
 
 package prober
+package config
 
 import (
 	"context"
