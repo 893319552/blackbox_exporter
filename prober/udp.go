@@ -19,10 +19,9 @@ import (
 	"fmt"
 	"encoding/hex"
 	"net"
+	"log"
 	"regexp"
 
-	"github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/log/level"
 	"github.com/prometheus/blackbox_exporter/config"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -32,13 +31,13 @@ func dialUDP(ctx context.Context, target string, module config.Module, registry 
 	dialer := &net.Dialer{}
 	targetAddress, port, err := net.SplitHostPort(target)
 	if err != nil {
-		level.Error(logger).Log("msg", "Error splitting target address and port", "err", err)
+		log.Printf("Error splitting target address and port: %v", err)
 		return nil, err
 	}
 
 	ip, err := chooseProtocol(ctx, module.UDP.IPProtocol, false, targetAddress, registry, logger)
 	if err != nil {
-		level.Error(logger).Log("msg", "Error resolving address", "err", err)
+		log.Printf("Error resolving address: %v",  err)
 		return nil, err
 	}
 
@@ -48,7 +47,7 @@ func dialUDP(ctx context.Context, target string, module config.Module, registry 
 		dialProtocol = "udp4"
 	}
 	dialTarget = net.JoinHostPort(ip.String(), port)
-	level.Info(logger).Log("msg", "Dialing UDP")
+	log.Printf("Error dialing UDP: %v", err)
 	return dialer.DialContext(ctx, dialProtocol, dialTarget)
 }
 
@@ -62,46 +61,46 @@ func ProbeUDP(ctx context.Context, target string, module config.Module, registry
 
 	conn, err := dialUDP(ctx, target, module, registry, logger)
 	if err != nil {
-		level.Error(logger).Log("msg", "Error dialing UDP", "err", err)
+		log.Printf("Error dialing UDP", err)
 		return false
 	}
 	defer conn.Close()
-	level.Info(logger).Log("msg", "Successfully dialed")
+	log.Println("Successfully dialed")
 	// Set a deadline to prevent the following code from blocking forever.
 	// If a deadline cannot be set, better fail the probe by returning an error
 	// now rather than blocking forever.
 	if err := conn.SetDeadline(deadline); err != nil {
-		level.Error(logger).Log("msg", "Error setting deadline", "err", err)
+		log.Printf("Error setting deadline: %v", err)
 		return false
 	}
 
 	scanner := bufio.NewScanner(conn)
 	for i, qr := range module.UDP.QueryResponse {
-		level.Info(logger).Log("msg", "Processing query response entry", "entry_number", i)
+		log.Println("Processing query response entry", i)
 		send := qr.Send
 		if qr.Expect.Regexp != nil {
 			re, err := regexp.Compile(qr.Expect.String())
 			if err != nil {
-				level.Error(logger).Log("msg", "Could not compile into regular expression", "regexp", qr.Expect, "err", err)
+				log.Printf("msg", "Could not compile into regular expression", qr.Expect, err)
 				return false
 			}
 			var match []int
 			// Read lines until one of them matches the configured regexp.
 			for scanner.Scan() {
-				level.Debug(logger).Log("msg", "Read line", "line", scanner.Text())
+				log.Printf("Read line: %s", scanner.Text())
 				match = re.FindSubmatchIndex(scanner.Bytes())
 				if match != nil {
-					level.Info(logger).Log("msg", "Regexp matched", "regexp", re, "line", scanner.Text())
+					log.Println("Regexp matched", re, scanner.Text())
 					break
 				}
 			}
 			if scanner.Err() != nil {
-				level.Error(logger).Log("msg", "Error reading from connection", "err", scanner.Err().Error())
+				log.Printf("Error reading from connection: %v", scanner.Err().Error())
 				return false
 			}
 			if match == nil {
 				probeFailedDueToRegex.Set(1)
-				level.Error(logger).Log("msg", "Regexp did not match", "regexp", re, "line", scanner.Text())
+				log.Printf("Regexp did not match", scanner.Text())
 				return false
 			}
 			probeFailedDueToRegex.Set(0)
@@ -110,17 +109,17 @@ func ProbeUDP(ctx context.Context, target string, module config.Module, registry
 		if qr.SendHex != "" {
 			sendBytes, err := hex.DecodeString(qr.SendHex)
 			if err != nil {
-				level.Error(logger).Log("msg", "Failed to decode hex string", "err", err)
+				log.Printf("Failed to decode hex string: %v", err)
 				return false
 			}
 			if _, err := conn.Write(sendBytes); err != nil {
-				level.Error(logger).Log("msg", "Failed to send", "err", err)
+				log.Printf("Failed to send: %v", err)
 				return false
 			}
 		} else if send != "" {
-			level.Debug(logger).Log("msg", "Sending line", "line", send)
+			log.Printf("Sending line: %s", send)
 			if _, err := fmt.Fprintf(conn, "%s\n", send); err != nil {
-				level.Error(logger).Log("msg", "Failed to send", "err", err)
+				log.Printf("Failed to send: %v", err)
 				return false
 			}
 		}
