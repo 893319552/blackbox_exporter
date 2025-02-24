@@ -45,18 +45,9 @@ func isIPv6Supported() bool {
     return false
 }
 
-func TestRecursiveDNSResponse(t *testing.T) {
-    if !isIPv6Supported() {
-        t.Skip("skipping; CI is failing on ipv6 dns requests")
-    }
     // existing test code
 }
 
-func TestAuthoritativeDNSResponse(t *testing.T) {
-    if !isIPv6Supported() {
-        t.Skip("skipping; CI is failing on ipv6 dns requests")
-    }
-    // existing test code
 }
 
 func startDNSServer(protocol string, handler func(dns.ResponseWriter, *dns.Msg)) (*dns.Server, net.Addr) {
