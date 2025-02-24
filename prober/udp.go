@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"encoding/hex"
 	"net"
-	"log"
+	"log/slog"
 	"regexp"
 
 	"github.com/prometheus/blackbox_exporter/config"
@@ -31,13 +31,13 @@ func dialUDP(ctx context.Context, target string, module config.Module, registry 
 	dialer := &net.Dialer{}
 	targetAddress, port, err := net.SplitHostPort(target)
 	if err != nil {
-		log.Printf("Error splitting target address and port: %v", err)
+		logger.Error("Error splitting target address and port", "err", err)
 		return nil, err
 	}
 
 	ip, err := chooseProtocol(ctx, module.UDP.IPProtocol, false, targetAddress, registry, logger)
 	if err != nil {
-		log.Printf("Error resolving address: %v",  err)
+		logger.Error("Error resolving address", "err", err)
 		return nil, err
 	}
 
@@ -47,7 +47,7 @@ func dialUDP(ctx context.Context, target string, module config.Module, registry 
 		dialProtocol = "udp4"
 	}
 	dialTarget = net.JoinHostPort(ip.String(), port)
-	log.Printf("Error dialing UDP: %v", err)
+	logger.Error("Error dialing UDP", "err", err)
 	return dialer.DialContext(ctx, dialProtocol, dialTarget)
 }
 
@@ -70,18 +70,18 @@ func ProbeUDP(ctx context.Context, target string, module config.Module, registry
 	// If a deadline cannot be set, better fail the probe by returning an error
 	// now rather than blocking forever.
 	if err := conn.SetDeadline(deadline); err != nil {
-		log.Printf("Error setting deadline: %v", err)
+		logger.Error("Error setting deadline", "err", err)
 		return false
 	}
 
 	scanner := bufio.NewScanner(conn)
 	for i, qr := range module.UDP.QueryResponse {
-		log.Println("Processing query response entry", i)
+		logger.Info("Processing query response entry", "entry_number", i)
 		send := qr.Send
 		if qr.Expect.Regexp != nil {
 			re, err := regexp.Compile(qr.Expect.String())
 			if err != nil {
-				log.Printf("msg", "Could not compile into regular expression", qr.Expect, err)
+				logger.Error("msg", "Could not compile into regular expression", qr.Expect, err)
 				return false
 			}
 			var match []int
@@ -90,17 +90,17 @@ func ProbeUDP(ctx context.Context, target string, module config.Module, registry
 				log.Printf("Read line: %s", scanner.Text())
 				match = re.FindSubmatchIndex(scanner.Bytes())
 				if match != nil {
-					log.Println("Regexp matched", re, scanner.Text())
+					logger.Info("Regexp matched", re, scanner.Text())
 					break
 				}
 			}
 			if scanner.Err() != nil {
-				log.Printf("Error reading from connection: %v", scanner.Err().Error())
+				logger.Error("Error reading from connection", "err", scanner.Err().Error())
 				return false
 			}
 			if match == nil {
 				probeFailedDueToRegex.Set(1)
-				log.Printf("Regexp did not match", scanner.Text())
+				logger.Error("Regexp did not match", "regexp", qr.Expect.Regexp, "line", scanner.Text())
 				return false
 			}
 			probeFailedDueToRegex.Set(0)
@@ -109,17 +109,17 @@ func ProbeUDP(ctx context.Context, target string, module config.Module, registry
 		if qr.SendHex != "" {
 			sendBytes, err := hex.DecodeString(qr.SendHex)
 			if err != nil {
-				log.Printf("Failed to decode hex string: %v", err)
+				logger.Error("Failed to decode hex string", "err", err)
 				return false
 			}
 			if _, err := conn.Write(sendBytes); err != nil {
-				log.Printf("Failed to send: %v", err)
+				logger.Error("Failed to send", "err", err)
 				return false
 			}
 		} else if send != "" {
 			log.Printf("Sending line: %s", send)
 			if _, err := fmt.Fprintf(conn, "%s\n", send); err != nil {
-				log.Printf("Failed to send: %v", err)
+				logger.Error("Failed to send", "err", err)
 				return false
 			}
 		}
