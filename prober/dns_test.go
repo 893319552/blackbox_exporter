@@ -45,7 +45,6 @@ func isIPv6Supported() bool {
     return false
 }
 
-}
 
 func startDNSServer(protocol string, handler func(dns.ResponseWriter, *dns.Msg)) (*dns.Server, net.Addr) {
 	h := dns.NewServeMux()
