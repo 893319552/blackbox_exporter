@@ -1,3 +1,16 @@
+// Copyright 2016 The Prometheus Authors
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package prober
 
 import (
@@ -17,19 +30,8 @@ import (
 
 var PROTOCOLS = [...]string{"udp", "tcp"}
 
-func isIPv6Supported() bool {
-	addrs, err := net.InterfaceAddrs()
-	if err != nil {
-		return false
-	}
-	for _, addr := range addrs {
-		if ipnet, ok := addr.(*net.IPNet); ok && ipnet.IP.To4() == nil {
-			return true
-		}
-	}
-	return false
-}
-
+// startDNSServer starts a DNS server with a given handler function on a random port.
+// Returns the Server object itself as well as the net.Addr corresponding to the server port.
 func startDNSServer(protocol string, handler func(dns.ResponseWriter, *dns.Msg)) (*dns.Server, net.Addr) {
 	h := dns.NewServeMux()
 	h.HandleFunc(".", handler)
@@ -88,7 +90,7 @@ func recursiveDNSHandler(w dns.ResponseWriter, r *dns.Msg) {
 }
 
 func TestRecursiveDNSResponse(t *testing.T) {
-	if os.Getenv("CI") == "true" && !isIPv6Supported() {
+	if os.Getenv("CI") == "true" {
 		t.Skip("skipping; CI is failing on ipv6 dns requests")
 	}
 
@@ -245,7 +247,7 @@ func authoritativeDNSHandler(w dns.ResponseWriter, r *dns.Msg) {
 }
 
 func TestAuthoritativeDNSResponse(t *testing.T) {
-	if os.Getenv("CI") == "true" && !isIPv6Supported() {
+	if os.Getenv("CI") == "true" {
 		t.Skip("skipping; CI is failing on ipv6 dns requests")
 	}
 
@@ -396,7 +398,7 @@ func TestAuthoritativeDNSResponse(t *testing.T) {
 }
 
 func TestServfailDNSResponse(t *testing.T) {
-	if os.Getenv("CI") == "true" && !isIPv6Supported() {
+	if os.Getenv("CI") == "true" {
 		t.Skip("skipping; CI is failing on ipv6 dns requests")
 	}
 
@@ -473,7 +475,7 @@ func TestServfailDNSResponse(t *testing.T) {
 }
 
 func TestDNSProtocol(t *testing.T) {
-	if os.Getenv("CI") == "true" && !isIPv6Supported() {
+	if os.Getenv("CI") == "true" {
 		t.Skip("skipping; CI is failing on ipv6 dns requests")
 	}
 
@@ -518,4 +520,138 @@ func TestDNSProtocol(t *testing.T) {
 		expectedResults := map[string]float64{
 			"probe_ip_protocol": 6,
 		}
-		checkRegistryResults(expected
+		checkRegistryResults(expectedResults, mfs, t)
+
+		// Prefer IPv4
+		module = config.Module{
+			Timeout: time.Second,
+			DNS: config.DNSProbe{
+				QueryName:         "example.com",
+				Recursion:         true,
+				TransportProtocol: protocol,
+				IPProtocol:        "ip4",
+			},
+		}
+		registry = prometheus.NewRegistry()
+		testCTX, cancel = context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		result = ProbeDNS(testCTX, net.JoinHostPort("localhost", port), module, registry, promslog.NewNopLogger())
+		if !result {
+			t.Fatalf("DNS protocol: \"%v\", preferred \"ip4\" connection test failed, expected success.", protocol)
+		}
+		mfs, err = registry.Gather()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		expectedResults = map[string]float64{
+			"probe_ip_protocol": 4,
+		}
+		checkRegistryResults(expectedResults, mfs, t)
+
+		// Prefer none
+		module = config.Module{
+			Timeout: time.Second,
+			DNS: config.DNSProbe{
+				QueryName:         "example.com",
+				Recursion:         true,
+				TransportProtocol: protocol,
+			},
+		}
+		registry = prometheus.NewRegistry()
+		testCTX, cancel = context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		result = ProbeDNS(testCTX, net.JoinHostPort("localhost", port), module, registry, promslog.NewNopLogger())
+		if !result {
+			t.Fatalf("DNS protocol: \"%v\" connection test failed, expected success.", protocol)
+		}
+		mfs, err = registry.Gather()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		expectedResults = map[string]float64{
+			"probe_ip_protocol": 6,
+		}
+		checkRegistryResults(expectedResults, mfs, t)
+
+		// No protocol
+		module = config.Module{
+			Timeout: time.Second,
+			DNS: config.DNSProbe{
+				QueryName: "example.com",
+				Recursion: true,
+			},
+		}
+		registry = prometheus.NewRegistry()
+		testCTX, cancel = context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		result = ProbeDNS(testCTX, net.JoinHostPort("localhost", port), module, registry, promslog.NewNopLogger())
+		if protocol == "udp" {
+			if !result {
+				t.Fatalf("DNS test connection with protocol %s failed, expected success.", protocol)
+			}
+		} else {
+			if result {
+				t.Fatalf("DNS test connection with protocol %s succeeded, expected failure.", protocol)
+			}
+		}
+		mfs, err = registry.Gather()
+		if err != nil {
+			t.Fatal(err)
+		}
+		expectedResults = map[string]float64{
+			"probe_ip_protocol": 6,
+		}
+		checkRegistryResults(expectedResults, mfs, t)
+
+	}
+}
+
+// TestDNSMetrics checks that calling ProbeDNS populates the expected
+// set of metrics for a DNS probe, but it does not test that those
+// metrics contain specific values.
+func TestDNSMetrics(t *testing.T) {
+	server, addr := startDNSServer("udp", recursiveDNSHandler)
+	defer server.Shutdown()
+
+	_, port, _ := net.SplitHostPort(addr.String())
+
+	module := config.Module{
+		Timeout: time.Second,
+		DNS: config.DNSProbe{
+			IPProtocol:         "ip4",
+			IPProtocolFallback: true,
+			QueryName:          "example.com",
+			Recursion:          true,
+		},
+	}
+	registry := prometheus.NewRegistry()
+	testCTX, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	result := ProbeDNS(testCTX, net.JoinHostPort("localhost", port), module, registry, promslog.NewNopLogger())
+	if !result {
+		t.Fatalf("DNS test connection failed, expected success.")
+	}
+	mfs, err := registry.Gather()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expectedMetrics := map[string]map[string]map[string]struct{}{
+		"probe_dns_lookup_time_seconds": nil,
+		"probe_dns_duration_seconds": {
+			"phase": {
+				"resolve": {},
+				"connect": {},
+				"request": {},
+			},
+		},
+		"probe_dns_answer_rrs":      nil,
+		"probe_dns_authority_rrs":   nil,
+		"probe_dns_additional_rrs":  nil,
+		"probe_dns_query_succeeded": nil,
+	}
+
+	checkMetrics(expectedMetrics, mfs, t)
+}
