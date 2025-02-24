@@ -47,7 +47,7 @@ func dialUDP(ctx context.Context, target string, module config.Module, registry 
 		dialProtocol = "udp4"
 	}
 	dialTarget = net.JoinHostPort(ip.String(), port)
-	logger.Error("Error dialing UDP", "err", err)
+        logger.Info("Dialing UDP", "protocol", dialProtocol, "target", dialTarget)
 	return dialer.DialContext(ctx, dialProtocol, dialTarget)
 }
 
