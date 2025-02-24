@@ -261,6 +261,15 @@ type TCPProbe struct {
 	TLSConfig          config.TLSConfig `yaml:"tls_config,omitempty"`
 }
 
+type UDPProbe struct {
+	IPProtocol         string           `yaml:"preferred_ip_protocol,omitempty"`
+	IPProtocolFallback bool             `yaml:"ip_protocol_fallback,omitempty"`
+	SourceIPAddress    string           `yaml:"source_ip_address,omitempty"`
+	QueryResponse      []QueryResponse  `yaml:"query_response,omitempty"`
+	TLS                bool             `yaml:"tls,omitempty"`
+	TLSConfig          config.TLSConfig `yaml:"tls_config,omitempty"`
+}
+
 type ICMPProbe struct {
 	IPProtocol         string `yaml:"preferred_ip_protocol,omitempty"` // Defaults to "ip6".
 	IPProtocolFallback bool   `yaml:"ip_protocol_fallback,omitempty"`
