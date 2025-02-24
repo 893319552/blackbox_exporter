@@ -35,6 +35,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/common/config"
+	"github.com/prometheus/blackbox_exporter/config"
 )
 
 var (
