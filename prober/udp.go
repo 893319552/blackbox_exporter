@@ -61,11 +61,11 @@ func ProbeUDP(ctx context.Context, target string, module config.Module, registry
 
 	conn, err := dialUDP(ctx, target, module, registry, logger)
 	if err != nil {
-		log.Printf("Error dialing UDP", err)
+		logger.Error("Error dialing TCP", "err", err)
 		return false
 	}
 	defer conn.Close()
-	log.Println("Successfully dialed")
+	logger.Info("Successfully dialed")
 	// Set a deadline to prevent the following code from blocking forever.
 	// If a deadline cannot be set, better fail the probe by returning an error
 	// now rather than blocking forever.
@@ -87,7 +87,7 @@ func ProbeUDP(ctx context.Context, target string, module config.Module, registry
 			var match []int
 			// Read lines until one of them matches the configured regexp.
 			for scanner.Scan() {
-				log.Printf("Read line: %s", scanner.Text())
+				logger.Debug("Read line", "line", scanner.Text())
 				match = re.FindSubmatchIndex(scanner.Bytes())
 				if match != nil {
 					logger.Info("Regexp matched", re, scanner.Text())
@@ -117,7 +117,7 @@ func ProbeUDP(ctx context.Context, target string, module config.Module, registry
 				return false
 			}
 		} else if send != "" {
-			log.Printf("Sending line: %s", send)
+			logger.Debug("Sending line", "line", send)
 			if _, err := fmt.Fprintf(conn, "%s\n", send); err != nil {
 				logger.Error("Failed to send", "err", err)
 				return false
