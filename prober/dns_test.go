@@ -12,7 +12,6 @@
 // limitations under the License.
 
 package prober
-package config
 
 import (
 	"context"
@@ -473,43 +472,6 @@ func TestServfailDNSResponse(t *testing.T) {
 			checkRegistryResults(expectedResults, mfs, t)
 		}
 	}
-}
-// 添加测试 ProbeUDP 的测试用例
-func TestProbeUDP(t *testing.T) {
-    server, addr := startDNSServer("udp", recursiveDNSHandler)
-    defer server.Shutdown()
-
-    module := config.Module{
-        Timeout: time.Second,
-        UDP: config.UDPProbe{
-            QueryResponse: []config.QueryResponse{
-                {
-                    Expect: config.Expect{
-                        Regexp: ".*",
-                    },
-                },
-            },
-        },
-    }
-
-    registry := prometheus.NewPedanticRegistry()
-    testCTX, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-    defer cancel()
-
-    result := ProbeUDP(testCTX, addr.String(), module, registry, promslog.NewNopLogger())
-    if !result {
-        t.Fatalf("ProbeUDP test connection failed, expected success.")
-    }
-
-    mfs, err := registry.Gather()
-    if err != nil {
-        t.Fatal(err)
-    }
-
-    expectedMetrics := map[string]float64{
-        "probe_ip_protocol": 4,  // 假设使用 IPv4
-    }
-    checkRegistryResults(expectedMetrics, mfs, t)
 }
 
 func TestDNSProtocol(t *testing.T) {
