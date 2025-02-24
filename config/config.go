@@ -77,6 +77,10 @@ var (
 	}
 )
 
+type Expect struct {
+    Regexp string `yaml:"regexp,omitempty"`
+}
+
 type Config struct {
 	Modules map[string]Module `yaml:"modules"`
 }
