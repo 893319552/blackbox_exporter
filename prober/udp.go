@@ -79,8 +79,8 @@ func ProbeUDP(ctx context.Context, target string, module config.Module, registry
 	for i, qr := range module.UDP.QueryResponse {
 		level.Info(logger).Log("msg", "Processing query response entry", "entry_number", i)
 		send := qr.Send
-		if qr.Expect != "" {
-			re, err := regexp.Compile(qr.Expect)
+		if qr.Expect.Regexp != nil {
+			re, err := regexp.Compile(qr.Expect.String())
 			if err != nil {
 				level.Error(logger).Log("msg", "Could not compile into regular expression", "regexp", qr.Expect, "err", err)
 				return false
