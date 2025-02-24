@@ -26,7 +26,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-func dialUDP(ctx context.Context, target string, module config.Module, registry *prometheus.Registry, logger log.Logger) (net.Conn, error) {
+func dialUDP(ctx context.Context, target string, module config.Module, registry *prometheus.Registry, logger *slog.Logger) (net.Conn, error) {
 	var dialProtocol, dialTarget string
 	dialer := &net.Dialer{}
 	targetAddress, port, err := net.SplitHostPort(target)
@@ -51,7 +51,7 @@ func dialUDP(ctx context.Context, target string, module config.Module, registry 
 	return dialer.DialContext(ctx, dialProtocol, dialTarget)
 }
 
-func ProbeUDP(ctx context.Context, target string, module config.Module, registry *prometheus.Registry, logger log.Logger) bool {
+func ProbeUDP(ctx context.Context, target string, module config.Module, registry *prometheus.Registry, logger *slog.Logger) bool {
 	probeFailedDueToRegex := prometheus.NewGauge(prometheus.GaugeOpts{
 		Name: "probe_failed_due_to_regex",
 		Help: "Indicates if probe failed due to regex",
