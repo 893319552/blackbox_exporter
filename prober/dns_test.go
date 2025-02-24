@@ -104,7 +104,7 @@ func recursiveDNSHandler(w dns.ResponseWriter, r *dns.Msg) {
 }
 
 func TestRecursiveDNSResponse(t *testing.T) {
-	if os.Getenv("CI") == "true" {
+	if os.Getenv("CI") == "true"  && !isIPv6Supported() {
 		t.Skip("skipping; CI is failing on ipv6 dns requests")
 	}
 
@@ -261,7 +261,7 @@ func authoritativeDNSHandler(w dns.ResponseWriter, r *dns.Msg) {
 }
 
 func TestAuthoritativeDNSResponse(t *testing.T) {
-	if os.Getenv("CI") == "true" {
+	if os.Getenv("CI") == "true"  && !isIPv6Supported() {
 		t.Skip("skipping; CI is failing on ipv6 dns requests")
 	}
 
@@ -412,7 +412,7 @@ func TestAuthoritativeDNSResponse(t *testing.T) {
 }
 
 func TestServfailDNSResponse(t *testing.T) {
-	if os.Getenv("CI") == "true" {
+	if os.Getenv("CI") == "true"  && !isIPv6Supported() {
 		t.Skip("skipping; CI is failing on ipv6 dns requests")
 	}
 
