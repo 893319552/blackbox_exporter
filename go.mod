@@ -15,8 +15,8 @@ require (
 	google.golang.org/grpc v1.70.0
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1
-        github.com/go-kit/log v0.2.0
-        github.com/go-kit/log/level v0.2.0
+        github.com/go-kit/log v0.1.0
+        github.com/go-kit/log/level v0.1.0
 )
 
 require (
