@@ -1,10 +1,8 @@
 package prober
 
 import (
-    "bufio"
     "context"
     "encoding/hex"
-    "fmt"
     "net"
     "regexp"
 
