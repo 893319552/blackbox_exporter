@@ -1,3 +1,18 @@
+package prober
+
+import (
+    "bufio"
+    "context"
+    "encoding/hex"
+    "fmt"
+    "net"
+    "regexp"
+
+    "github.com/prometheus/blackbox_exporter/config"
+    "github.com/prometheus/client_golang/prometheus"
+    "log/slog"
+)
+
 func ProbeUDP(ctx context.Context, target string, module config.Module, registry *prometheus.Registry, logger *slog.Logger) bool {
 	probeFailedDueToRegex := prometheus.NewGauge(prometheus.GaugeOpts{
 		Name: "probe_failed_due_to_regex",
@@ -13,7 +28,6 @@ func ProbeUDP(ctx context.Context, target string, module config.Module, registry
 	}
 	defer packetConn.Close()
 	logger.Info("Successfully created UDP packet connection")
-	// 设置一个截止时间以防止代码永远阻塞
 	if err := packetConn.SetDeadline(deadline); err != nil {
 		logger.Error("Error setting deadline", "err", err)
 		return false
@@ -36,7 +50,6 @@ func ProbeUDP(ctx context.Context, target string, module config.Module, registry
 				return false
 			}
 			var match []int
-			// 读取数据直到匹配配置的正则表达式
 			for {
 				n, _, err := packetConn.ReadFrom(buf)
 				if err != nil {
