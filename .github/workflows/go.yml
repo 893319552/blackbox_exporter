@@ -1,45 +1,36 @@
 name: Build Blackbox Exporter
 
-on:
-  push:
-    branches:
-      - main
-  pull_request:
-  workflow_dispatch: # 允许手动触发
+on: [push, pull_request]
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: 检出代码
-        uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v2
 
-      - name: 设置 Go 环境
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.21'  # 选择合适的 Go 版本
-              
-      - name: Clean up cache directory
-        run: |
-          rm -rf $GOPATH/pkg/mod
+    - name: Set up Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: '1.22'
 
-      - name: Restore Go module cache
-        id: cache-mod
-        uses: actions/cache@v2
-        with:
-          path: |
-            ~/.cache/go-build
-            /go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
+    - name: Restore cache
+      id: cache-go-mod
+      uses: actions/cache@v2
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
 
-      - name: Install dependencies
-        run: go mod download
+    - name: Install dependencies
+      run: go mod download
 
-      - name: Build the project
-        run: go build -v ./...
+    - name: Build
+      run: go build -v ./...
 
-      - name: Run tests
-        run: go test -v ./...
+    - name: Run tests
+      run: go test -v ./...
