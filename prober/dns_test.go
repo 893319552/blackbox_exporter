@@ -489,7 +489,7 @@ func TestServfailDNSResponse(t *testing.T) {
 }
 
 func TestDNSProtocol(t *testing.T) {
-	if os.Getenv("CI") == "true" {
+	if os.Getenv("CI") == "true" && !isIPv6Supported() {
 		t.Skip("skipping; CI is failing on ipv6 dns requests")
 	}
 
