@@ -84,6 +84,8 @@ func ProbeUDP(ctx context.Context, target string, module config.Module, registry
 				logger.Error("Failed to send", "err", err)
 				return false
 			}
+			packetConn.Close()
+			return true
 		}
 	}
 	return true
